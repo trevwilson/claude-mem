@@ -10,14 +10,29 @@ import { existsSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
 
+// Platform check - evaluated once at module load
+const isWindows = process.platform === 'win32';
+
+/**
+ * Get the list of common bun installation paths to check
+ */
+export function getBunSearchPaths(): string[] {
+  return isWindows
+    ? [join(homedir(), '.bun', 'bin', 'bun.exe')]
+    : [
+        join(homedir(), '.bun', 'bin', 'bun'),
+        '/usr/local/bin/bun',
+        '/opt/homebrew/bin/bun',
+        '/home/linuxbrew/.linuxbrew/bin/bun'
+      ];
+}
+
 /**
  * Get the Bun executable path
  * Tries PATH first, then checks common installation locations
  * Returns absolute path if found, null otherwise
  */
 export function getBunPath(): string | null {
-  const isWindows = process.platform === 'win32';
-
   // Try PATH first
   try {
     const result = spawnSync('bun', ['--version'], {
@@ -33,16 +48,7 @@ export function getBunPath(): string | null {
   }
 
   // Check common installation paths
-  const bunPaths = isWindows
-    ? [join(homedir(), '.bun', 'bin', 'bun.exe')]
-    : [
-        join(homedir(), '.bun', 'bin', 'bun'),
-        '/usr/local/bin/bun',
-        '/opt/homebrew/bin/bun', // Apple Silicon Homebrew
-        '/home/linuxbrew/.linuxbrew/bin/bun' // Linux Homebrew
-      ];
-
-  for (const bunPath of bunPaths) {
+  for (const bunPath of getBunSearchPaths()) {
     if (existsSync(bunPath)) {
       return bunPath;
     }
@@ -58,7 +64,6 @@ export function getBunPath(): string | null {
 export function getBunPathOrThrow(): string {
   const bunPath = getBunPath();
   if (!bunPath) {
-    const isWindows = process.platform === 'win32';
     const installCmd = isWindows
       ? 'powershell -c "irm bun.sh/install.ps1 | iex"'
       : 'curl -fsSL https://bun.sh/install | bash';

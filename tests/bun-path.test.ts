@@ -12,7 +12,7 @@ vi.mock('child_process', () => ({
 }));
 
 // Import after mocking
-import { getBunPath, isBunAvailable, getBunPathOrThrow } from '../src/utils/bun-path';
+import { getBunPath, isBunAvailable, getBunPathOrThrow, getBunSearchPaths } from '../src/utils/bun-path';
 
 describe('bun-path utility', () => {
   it('should return "bun" when available in PATH', () => {
@@ -42,13 +42,16 @@ describe('bun-path utility', () => {
       signal: null
     } as any);
 
-    // Mock existsSync to return true for ~/.bun/bin/bun
-    vi.mocked(existsSync).mockImplementation((path: any) => {
-      return path.includes('.bun/bin/bun');
+    // Get valid paths from the implementation (ensures test stays in sync)
+    const validBunPaths = getBunSearchPaths();
+
+    // Mock existsSync to return true for any valid bun path
+    vi.mocked(existsSync).mockImplementation((path) => {
+      return validBunPaths.includes(path as string);
     });
 
     const result = getBunPath();
-    expect(result).toContain('.bun/bin/bun');
+    expect(validBunPaths).toContain(result);
   });
 
   it('should return null when bun is not found anywhere', () => {
